@@ -5,7 +5,7 @@ gcc-libs
 cantarell-fonts
 xorg-server
 xorg-xinit
-i3-wm
+i3
 
 [packages::optional]
 xterm

@@ -4,7 +4,7 @@
 gnome-shell
 gnome-terminal
 # or maybe better urxvt
-gnome-tweaks
+gnome-tweak-tool
 gnome-control-center
 xdg-user-dirs
 gdm
@@ -14,9 +14,9 @@ networkmanager
 # gnome-shell-extension-pop-shell-bin (from aur)
 
 [services]
-% sudo systemctl enable gdm
+% sudo systemctl enable gdm3
 # OR sudo systemctl enable --now gdm3 ???
-% sudo systemctl start --now gdm
+% sudo systemctl start --now gdm3
 
 #gdm: either name of services to be enabled
 #OR
