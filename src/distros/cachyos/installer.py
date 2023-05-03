@@ -13,6 +13,8 @@ packages = f"base linux{KERNEL} btrfs-progs sudo grub dhcpcd networkmanager nano
             linux-firmware" # os-prober bash tmux arch-install-scripts
 if not is_ash_bundle:
     packages +=  " python3 python-anytree"
+else:
+    packages +=  " zip"
 if is_efi:
     packages += " efibootmgr"
 if is_luks:

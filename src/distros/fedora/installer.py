@@ -13,6 +13,8 @@ packages = "kernel dnf passwd sudo sqlite-tools linux-firmware \
             glibc-langpack-en glibc-locale-source dhcpcd NetworkManager"
 if not is_ash_bundle:
     packages +=  " python-anytree"
+else:
+    packages +=  " zip"
 if is_efi:
     packages += " efibootmgr"
     if "64" in ARCH: # REVIEW not good for AARCH64/ARM64

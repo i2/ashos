@@ -15,6 +15,8 @@ packages = f"linux-image-{ARCH} btrfs-progs sudo curl dhcpcd5 locales nano \
             # console-setup firmware-linux firmware-linux-nonfree os-prober
 if not is_ash_bundle:
     packages +=  " python3 python3-anytree"
+else:
+    packages +=  " zip"
 if is_efi:
     packages += " grub-efi"  # includes efibootmgr
 else:

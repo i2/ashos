@@ -54,20 +54,18 @@ def fix_package_db(snap = 0):
         print("F: Fixing package manager database failed.")
 
 #   Delete init system files (Systemd, OpenRC, etc.)
-def init_system_clean(snap, FROM):
-    return ### TODO
-#    if FROM == "prepare":
-#        os.system(f"rm -rf /.snapshots/rootfs/snapshot-chr{snap}/var/lib/systemd/*{DEBUG}")
-#    elif FROM == "deploy":
-#        os.system(f"rm -rf /var/lib/systemd/*{DEBUG}")
-#        os.system(f"rm -rf /.snapshots/rootfs/snapshot-{snap}/var/lib/systemd/*{DEBUG}")
+def init_system_clean(snap, FROM): # REVIEW
+    if FROM == "prepare":
+        os.system(f"rm -rf /.snapshots/rootfs/snapshot-chr{snap}/lib/rc/cache/*{DEBUG}")
+    elif FROM == "deploy":
+        os.system(f"rm -rf /lib/rc/cache/*{DEBUG}")
+        os.system(f"rm -rf /.snapshots/rootfs/snapshot-{snap}/lib/rc/cache/*{DEBUG}")
 
 #   Copy init system files (Systemd, OpenRC, etc.) to shared
-def init_system_copy(snap, FROM):
-    return ### TODO
-#    if FROM == "post_transactions":
-#        os.system(f"rm -rf /var/lib/systemd/*{DEBUG}")
-#        os.system(f"cp -r --reflink=auto /.snapshots/rootfs/snapshot-{snap}/var/lib/systemd/. /var/lib/systemd/{DEBUG}")
+def init_system_copy(snap, FROM): # REVIEW
+    if FROM == "post_transactions":
+        os.system(f"rm -rf /lib/rc/cache/*{DEBUG}")
+        os.system(f"cp -r --reflink=auto /.snapshots/rootfs/snapshot-{snap}/lib/rc/cache/. /lib/rc/cache/{DEBUG}")
 
 #   Install atomic-operation
 def install_package(pkg, snap):

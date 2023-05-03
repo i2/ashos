@@ -34,7 +34,7 @@ def bundler():
         open(f"{tmpdir}/python.com", "wb").write(csmp_file)
         open(f"{tmpdir}/.args", "w").write("/zip/ash\n...")
         os.system(f"cat {installer_dir}/src/ashpk_core.py {installer_dir}/src/distros/{distro}/ashpk.py > {tmpdir}/ash")
-        os.system(f"zip -j {tmpdir}/python.com {tmpdir}/ash {tmpdir}/.args")
+        os.system(f"zip -uj {tmpdir}/python.com {tmpdir}/ash {tmpdir}/.args")
       # Make it executable
         mode = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
         os.chmod(f"{tmpdir}/python.com", mode)
@@ -322,10 +322,14 @@ def post_bootstrap(super_group): # REVIEW removed "{SUDO}" from all lines below
     os.system("chmod 700 /.snapshots/ash/root")
     os.system("chmod 1777 /.snapshots/ash/tmp")
     os.system(f"echo '0' > /usr/share/ash/snap")
-    os.system(f"echo 'mutable_dirs::' > /etc/ash.conf")
-    os.system(f"echo 'mutable_dirs_shared::' >> /etc/ash.conf")
-    if distro in ("arch", "cachyos", "endeavouros"):
-        os.system(f"echo 'aur::False' >> /etc/ash.conf")
+    with open("/etc/ash.conf", "a+") as f:
+        if is_ash_bundle:
+            f.write("[common]\nbundle = True\n\n")
+        f.write("[mutable_dirs]\n\n")
+        f.write("[mutable_dirs_shared]\n\n")
+        if distro in ("arch", "artix", "cachyos", "endeavouros"):
+            f.write("[aur]\nFalse\n\n") # REVIEW not generic
+        f.write("[notes]\n\n")
   # Update fstab
     with open('/etc/fstab', 'a') as f: # assumes script run as root # REVIEW 'w'
         for mntdir in mntdirs: # common entries
@@ -497,6 +501,9 @@ def yes_no(msg):
         elif reply.casefold() in ('no', 'n'):
             e = False
             break
+        elif reply.casefold() in ('exit', 'quit'):
+            unmounts("failed")
+            sys.exit(1)
         else:
             print("F: Invalid choice!")
             continue

@@ -96,10 +96,25 @@ def ash_update(dbg):
         except (HTTPError, URLError):
             print(f"F: Failed to download ash.")
         else:
+            etc_conf = ConfigParser(allow_no_value=True, strict=False)
+            etc_conf.optionxform = str # preserve case sensitivity
+            etc_conf.read("/etc/ash.conf")
             if dbg: # Just for testing
                 copy(f"{tmpdir}/ash", f'{HOME}/ash-latest')
                 os.chmod(f'{HOME}/ash-latest', mode)
                 print(f"Latest ash downloaded to {HOME}.")
+          # check if ash is a bundle
+            elif etc_conf['common']['bundle'] == "True": # TODO condense
+                if is_efi and os.path.exists("/boot/efi/ash"):
+                    b_f = "/boot/efi/ash"
+                elif os.path.exists("/.snapshots/ash/bundle/ash"):
+                    b_f = "/.snapshots/ash/bundle/ash"
+                copy(b_f, "/.snapshots/tmp/ash_old")
+                os.system(f"cp {b_f} {tmpdir}/python.com")
+                os.system(f"zip -j {tmpdir}/python.com {tmpdir}/ash")
+                os.system(f"mv {tmpdir}/python.com {b_f}")
+                # TODO no need to deploy?
+          # if not bundled
             elif cmp(f"{tmpdir}/ash", __file__, shallow=False):
                 print("F: Ash already up to date.")
             else:
@@ -353,20 +368,19 @@ def deploy(snap, secondary=False):
         tmp_delete(secondary)
         tmp = get_aux_tmp(tmp, secondary)
       # Special mutable directories
-        options = snapshot_config_get(snap)
-        mtbl_dirs = options["mutable_dirs"].split(',').remove('')
-        mtbl_dirs_shared = options["mutable_dirs_shared"].split(',').remove('')
+        mtbl_dirs = snapshot_config_get(snap, "mutable_dirs")
+        mtbl_dirs_shared = snapshot_config_get(snap, "mutable_dirs_shared")
       # btrfs snapshot operations
         os.system(f"btrfs sub snap /.snapshots/boot/boot-{snap} /.snapshots/boot/boot-{tmp}{DEBUG}")
         os.system(f"btrfs sub snap /.snapshots/etc/etc-{snap} /.snapshots/etc/etc-{tmp}{DEBUG}")
         os.system(f"btrfs sub snap /.snapshots/rootfs/snapshot-{snap} /.snapshots/rootfs/snapshot-{tmp}{DEBUG}")
-###2023        os.system(f"btrfs sub create /.snapshots/var/var-{tmp} >/dev/null 2>&1") # REVIEW pretty sure not needed
+#        os.system(f"btrfs sub create /.snapshots/var/var-{tmp} >/dev/null 2>&1") # REVIEW sure not needed
         os.system(f"mkdir -p /.snapshots/rootfs/snapshot-{tmp}/boot{DEBUG}")
         os.system(f"mkdir -p /.snapshots/rootfs/snapshot-{tmp}/etc{DEBUG}")
         rmrf(f"/.snapshots/rootfs/snapshot-{tmp}/var")
         os.system(f"cp -r --reflink=auto /.snapshots/boot/boot-{snap}/. /.snapshots/rootfs/snapshot-{tmp}/boot{DEBUG}")
         os.system(f"cp -r --reflink=auto /.snapshots/etc/etc-{snap}/. /.snapshots/rootfs/snapshot-{tmp}/etc{DEBUG}")
-#       os.system(f"cp --reflink=auto -r /.snapshots/var/var-{etc}/* /.snapshots/var/var-{tmp} >/dev/null 2>&1") # REVIEW 2023 pretty sure not needed
+#       os.system(f"cp --reflink=auto -r /.snapshots/var/var-{etc}/* /.snapshots/var/var-{tmp} >/dev/null 2>&1") # REVIEW sure not needed
       # If snapshot is mutable, modify '/' entry in fstab to read-write
         if check_mutability(snap):
             os.system(f"sed -i '0,/snapshot-{tmp}/ s|,ro||' /.snapshots/rootfs/snapshot-{tmp}/etc/fstab") ### ,rw
@@ -625,28 +639,28 @@ def install_profile(prof, snap, force=False, secondary=False, section_only=None)
         prepare(snap)
         pkgs = ""
         profconf = ConfigParser(allow_no_value=True, delimiters=("==="), strict=False)
-#        profconf.optionxform = lambda option: option # preserve case for letters
-        profconf.optionxform = str
+        #profconf.optionxform = lambda option: option
+        profconf.optionxform = str # preserve case sensitivity
         try:
             if os.path.exists(f"/.snapshots/tmp/{prof}.conf") and not force:
                 profconf.read(f"/.snapshots/tmp/{prof}.conf")
             else:
                 print(f"Downloading profile {prof} from AshOS...")
-                resp = urlopen(f"{URL}/profiles/{prof}/{dist}.conf").read().decode('utf-8') ### REVIEW
+                resp = urlopen(f"{URL}/profiles/{prof}/{dist}.conf").read().decode('utf-8') # REVIEW
                 with open(f"/.snapshots/tmp/{prof}.conf", 'w') as cfile:
                     cfile.write(resp) # Save for later use
                 profconf.read_string(resp)
             if profconf.has_section('presets'):
-                presets_helper(profconf, snap) ### BEFORE: profconf['presets'] IMPORTANT BAD PRACTICE
+                presets_helper(profconf, snap) # before: profconf['presets'] # REVIEW important
             for p in profconf['packages']:
                 pkgs += f"{p} "
             install_package(pkgs.strip(), snap) # remove last space
             for cmd in profconf['commands']:
                 os.system(f'chroot /.snapshots/rootfs/snapshot-chr{snap} {cmd}')
-        except (NoOptionError, NoSectionError, HTTPError, URLError): ### REVIEW 2023
+        except (NoOptionError, NoSectionError, HTTPError, URLError): # REVIEW
             chr_delete(snap)
             print("F: Install failed and changes discarded!")
-            sys.exit(1) ### REVIEW 2023
+            sys.exit(1) # REVIEW
         else:
             post_transactions(snap)
             print(f"Profile {prof} installed in snapshot {snap} successfully.")
@@ -672,15 +686,15 @@ def install_profile_live(prof, snap, force):
             profconf.read_string(resp)
         for p in profconf['packages']:
             pkgs += f"{p} "
-        install_package_live(pkgs.strip(), snap, tmp) ### REVIEW snapshot argument needed
+        install_package_live(pkgs.strip(), snap, tmp)
         for cmd in profconf['commands']:
             os.system(f"chroot /.snapshots/rootfs/snapshot-chr{snap} {cmd}")
-            #excode2 = service_enable(prof, tmp_prof, tmp) ### IMPORTANT: tmp or snap?!
-    except (NoOptionError, NoSectionError, HTTPError, URLError): ### REVIEW 2023
-        print("F: Install failed!") # Before: Install failed and changes discarded (rephrased as there is no chr_delete here)
+            #excode2 = service_enable(prof, tmp_prof, tmp) # REVIEW important: tmp or snap?
+    except (NoOptionError, NoSectionError, HTTPError, URLError): # REVIEW
+        print("F: Install failed!")
         return 1
     else:
-        print(f"Profile {prof} installed in current/live snapshot.") ### REVIEW
+        print(f"Profile {prof} installed in current/live snapshot.") # REVIEW
         return 0
     os.system(f"umount /.snapshots/rootfs/snapshot-{tmp}/*{DEBUG}") ### REVIEW
     os.system(f"umount /.snapshots/rootfs/snapshot-{tmp}{DEBUG}") ### REVIEW
@@ -746,9 +760,8 @@ def post_transactions(snap):
     os.system(f"umount -R /.snapshots/rootfs/snapshot-chr{snap}/sys{DEBUG}")
     os.system(f"umount -R /.snapshots/rootfs/snapshot-chr{snap}{DEBUG}")
   # Special mutable directories
-    options = snapshot_config_get(snap)
-    mtbl_dirs = options["mutable_dirs"].split(',').remove('')
-    mtbl_dirs_shared = options["mutable_dirs_shared"].split(',').remove('')
+    mtbl_dirs = snapshot_config_get(snap, "mutable_dirs")
+    mtbl_dirs_shared = snapshot_config_get(snap, "mutable_dirs_shared")
     if mtbl_dirs:
         for mnt_path in mtbl_dirs:
             os.system(f"umount -R /.snapshots/rootfs/snapshot-chr{snap}/{mnt_path}{DEBUG}")
@@ -818,9 +831,8 @@ def prepare(snap):
         os.system(f"cp /etc/machine-id /.snapshots/rootfs/snapshot-chr{snap}/etc/machine-id")
     os.system(f"mkdir -p /.snapshots/rootfs/snapshot-chr{snap}/.snapshots/ash && cp -f /.snapshots/ash/fstree /.snapshots/rootfs/snapshot-chr{snap}/.snapshots/ash/")
   # Special mutable directories
-    options = snapshot_config_get(snap)
-    mtbl_dirs = options["mutable_dirs"].split(',').remove('')
-    mtbl_dirs_shared = options["mutable_dirs_shared"].split(',').remove('')
+    mtbl_dirs = snapshot_config_get(snap, "mutable_dirs")
+    mtbl_dirs_shared = snapshot_config_get(snap, "mutable_dirs_shared")
     if mtbl_dirs:
         for mnt_path in mtbl_dirs:
             os.system(f"mkdir -p /.snapshots/mutable_dirs/snapshot-{snap}/{mnt_path}")
@@ -831,7 +843,7 @@ def prepare(snap):
             os.system(f"mkdir -p /.snapshots/mutable_dirs/{mnt_path}")
             os.system(f"mkdir -p /.snapshots/rootfs/snapshot-chr{snap}/{mnt_path}")
             os.system(f"mount --bind /.snapshots/mutable_dirs/{mnt_path} /.snapshots/rootfs/snapshot-chr{snap}/{mnt_path}")
-  # Important: Do not move the following line above (otherwise error) ###UPDATE2023 REVIEW WHEN replaced with ash_mounts, this would be redundant
+  # Important: Do not move the following line above (otherwise error) # REVIEW when switch to ash_mounts, this would be redundant
     os.system(f"mount --bind --make-slave /etc/resolv.conf /.snapshots/rootfs/snapshot-chr{snap}/etc/resolv.conf{DEBUG}")
 
 #   Return order to recurse tree
@@ -974,7 +986,7 @@ def snapshot_config_edit(snap, skip_prep=False, skip_post=False):
             prepare(snap)
         if "EDITOR" in os.environ:
             os.system(f"$EDITOR /.snapshots/rootfs/snapshot-chr{snap}/etc/ash.conf") # usage: sudo -E ash edit -s <snapshot-number>
-        elif not os.system('[ -x "$(command -v nano)" ]'): # nano available:
+        elif not os.system('[ -x "$(command -v nano)" ]'): # nano available
             os.system(f"nano /.snapshots/rootfs/snapshot-chr{snap}/etc/ash.conf")
         elif not os.system('[ -x "$(command -v vi)" ]'): # vi available
             os.system(f"vi /.snapshots/rootfs/snapshot-chr{snap}/etc/ash.conf")
@@ -984,18 +996,20 @@ def snapshot_config_edit(snap, skip_prep=False, skip_post=False):
             post_transactions(snap)
 
 #   Get per-snapshot configuration options from /etc/ash.conf
-def snapshot_config_get(snap):
-    options = {"aur":"False","mutable_dirs":"","mutable_dirs_shared":""} # defaults here ### REVIEW This is not generic
-    if not os.path.exists(f"/.snapshots/etc/etc-{snap}/ash.conf"):
-        return options
-    with open(f"/.snapshots/etc/etc-{snap}/ash.conf", "r") as optfile:
-        for line in optfile:
-            if '#' in line:
-                line = line.split('#')[0] # Everything after '#' is a comment
-            if '::' in line: # Skip line if there's no option set
-                left, right = line.split("::") # Split options with '::'
-                options[left] = right[:-1] # Remove newline here
-    return options
+def snapshot_config_get(snap, section):
+    # REVIEW overkill and redundant calls as function?
+    result = []
+    etc_conf = ConfigParser(allow_no_value=True, strict=False)
+    etc_conf.optionxform = str # preserve case sensitivity
+    try:
+        if os.path.exists(f"/.snapshots/etc/etc-{snap}/ash.conf"):
+            etc_conf.read(f"/.snapshots/etc/etc-{snap}/ash.conf")
+            for i in etc_conf[section]:
+                result.append(i)
+    except (FileExistsError, NoOptionError, NoSectionError):
+        print(f"F: error in reading snapshot {snap} config file!")
+    else:
+        return result
 
 #   Remove temporary chroot for specified snapshot only
 #   This unlocks the snapshot for use by other functions

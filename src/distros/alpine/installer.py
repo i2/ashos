@@ -22,6 +22,8 @@ packages = f"linux-{KERNEL} curl coreutils sudo tzdata mount mkinitfs umount \
             # default mount from busybox gives errors. # umount still required?!
 if not is_ash_bundle:
     packages +=  " python3 py3-anytree"
+else:
+    packages +=  " zip"
 if is_efi:
     packages += " efibootmgr"
     packages_no_trigger = "grub-efi" # https://gitlab.alpinelinux.org/alpine/aports/-/issues/11673
@@ -84,18 +86,18 @@ def main():
     else:
         os.system("mv /usr/bin/ash /usr/bin/asd")
         print("Use asd instead of ash!")
+    #os.system("rmdir -p /media/cdrom")
+    #os.system("rmdir -p /media/floppy")
 
     #   5. Services (init, network, etc.)
     os.system("/sbin/setup-interfaces")
     os.system(f"/usr/sbin/adduser {username} plugdev")
-
-    rc_update = find_command(["rc-update"])
     tuples = ["devfs sysinit", "dmesg sysinit", "mdev sysinit", "hwdrivers sysinit", "cgroups sysinit",
               "hwclock boot", "modules boot", "sysctl boot", "hostname boot", "bootmisc boot", "syslog boot", "swap boot", "networking boot", "seedrng boot",
               "mount-ro shutdown", "killprocs shutdown", "savecache shutdown"]
     for i in tuples:
-        os.system(f"{rc_update} add {i}")
-    #os.system(f"{SUDO} chroot /mnt /bin/bash -c '/sbin/rc-service networkmanager start'")
+        os.system(f"/sbin/rc_update add {i}")
+    #os.system("/sbin/rc-service networkmanager start")
 
     #   6. Boot and EFI
     # should be before initram create otherwise canonical error in grub-probe
@@ -159,13 +161,12 @@ def strap():
     APK = get_apk_ver() # e.g. 2.14.0_rc1-r0
     with TemporaryDirectory(dir="/tmp", prefix="ash.") as tmpdir:
         apk_file = urlopen(f"{URL}/{ARCH}/apk-tools-static-{APK}.apk").read() # curl -LO
-        open(f"{tmpdir}/apk-tools-static-{APK}.apk", "wb").write(apk_file)
+        open(f"{tmpdir}/apk-tools-static-{APK}.apk", "wb").write(apk_file) # REVIEW close?
         tarfile.open(f"{tmpdir}/apk-tools-static-{APK}.apk").extractall(path=tmpdir) # tar zxf
-        # REVIEW close() needed?
-        sp.check_call(f"{SUDO} {tmpdir}/sbin/apk.static --arch {ARCH} -X {URL} -U --allow-untrusted --root /mnt --initdb --no-cache add alpine-base", shell=True) # REVIEW "/" needed after {URL} ?
-    copy(f"{installer_dir}/src/distros/alpine/repositories", "/mnt/etc/apk/") # REVIEW moved here from section 3 as error in installing 'bash'
+        sp.check_call(f"{tmpdir}/sbin/apk.static --arch {ARCH} -X {URL} -U --allow-untrusted --root /mnt --initdb --no-cache add alpine-base", shell=True)
+    copy(f"{installer_dir}/src/distros/alpine/repositories", "/mnt/etc/apk/")
     commands = f'''
-    {SUDO} cp --dereference /etc/resolv.conf /mnt/etc/
+    cp --dereference /etc/resolv.conf /mnt/etc/
     chroot /mnt /bin/sh -c "/sbin/apk update && /sbin/apk add {packages}"
     chroot /mnt /bin/sh -c "/sbin/apk update && /sbin/apk add --no-scripts {packages_no_trigger}"
     '''

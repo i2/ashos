@@ -13,6 +13,8 @@ packages = f"base linux{KERNEL} btrfs-progs sudo grub dhcpcd networkmanager nano
             linux-firmware" # os-prober bash tmux arch-install-scripts
 if not is_ash_bundle:
     packages +=  " python3 python-anytree"
+else:
+    packages +=  " zip"
 if is_efi:
     packages += " efibootmgr"
 if is_luks:
@@ -51,7 +53,7 @@ def main():
     #   4. Update hostname, hosts, locales and timezone, hosts
     os.system(f"echo {hostname} > /etc/hostname")
     os.system(f"echo 127.0.0.1 {hostname} {distro} >> /etc/hosts")
-    #os.system(f"{SUDO} chroot /mnt {SUDO} localedef -v -c -i en_US -f UTF-8 en_US.UTF-8")
+    #os.system(f"localedef -v -c -i en_US -f UTF-8 en_US.UTF-8")
     os.system("sed -i 's|^#en_US.UTF-8|en_US.UTF-8|g' /etc/locale.gen")
     os.system("locale-gen")
     os.system("echo 'LANG=en_US.UTF-8' > /etc/locale.conf")
