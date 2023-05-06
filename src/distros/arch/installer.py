@@ -100,7 +100,11 @@ def initram_update(): # REVIEW removed "{SUDO}" from all lines below
         os.system(f"mkinitcpio -p linux{KERNEL}")
 
 def strap():
-    sp.check_call(f"pacstrap /mnt --needed {packages}", shell=True)
+    if is_strap_cache:
+        os.system(f"repo-add {strap_cache_dir}/repo.db.tar.gz {strap_cache_dir}/*.pkg.tar.zst")
+        sp.check_call(f'pacstrap -c /mnt --cachedir {strap_cache_dir} --needed {packages}', shell=True)
+    else:
+        sp.check_call(f'pacstrap /mnt --needed {packages}', shell=True)
 
 main()
 

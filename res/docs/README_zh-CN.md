@@ -283,7 +283,8 @@ EDITOR=nano ast edit-conf <snapshot> # 设置EDITOR变量来选择想要用的�
 * 在打开的页面中添加下面这一行文字：
 
 ```
-aur::True
+[aur]
+Enable
 ```
 
 * 保存并退出。

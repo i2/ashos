@@ -202,10 +202,10 @@ def find_command(cmds):
         sys.exit(f"F: Command {cmds} not found!")
 #    return which(cmd) or which(f"/sbin/{cmd}") or which("/usr/sbin/{cmd}")
 
-def get_external_partition(thing):
+def get_path(msg):
     clear()
     while True:
-        print(f"Enter your external {thing} partition (e.g. /dev/sdaX):")
+        print(msg)
         p = input("> ")
         if p:
             if yes_no("Happy with your choice?"):
@@ -527,26 +527,26 @@ if is_ash_bundle and not is_efi:
         sys.exit("F: Please modify and run MBR prep script and run setup later!")
 is_boot_external = yes_no("Would you like to use a separate boot partition?")
 is_home_external = yes_no("Would you like to use a separate home partition?")
+is_strap_cache = yes_no("Do you have an offline package cache for bootstrapping?")
 is_mutable = yes_no("Would you like this installation to be mutable?")
 if is_boot_external and is_home_external:
     btrdirs = [f"@{distro_suffix}", f"@.snapshots{distro_suffix}", f"@etc{distro_suffix}", f"@var{distro_suffix}"]
     mntdirs = ["", ".snapshots", "etc", "var"]
-    bp = get_external_partition('boot')
-    hp = get_external_partition('home')
+    bp = get_path("Enter external boot partition (e.g. /dev/sdaX):")
+    hp = get_path("Enter external home partition (e.g. /dev/sdaY):")
 elif is_boot_external:
     btrdirs = [f"@{distro_suffix}", f"@.snapshots{distro_suffix}", f"@etc{distro_suffix}", f"@home{distro_suffix}", f"@var{distro_suffix}"]
     mntdirs = ["", ".snapshots", "etc", "home", "var"]
-    bp = get_external_partition('boot')
+    bp = get_path("Enter external boot partition (e.g. /dev/sdaX):")
 elif is_home_external:
     btrdirs = [f"@{distro_suffix}", f"@.snapshots{distro_suffix}", f"@boot{distro_suffix}", f"@etc{distro_suffix}", f"@var{distro_suffix}"]
     mntdirs = ["", ".snapshots", "boot", "etc", "var"]
-    hp = get_external_partition('home')
+    hp = get_path("Enter external home partition (e.g. /dev/sdaY):")
 else:
     btrdirs = [f"@{distro_suffix}", f"@.snapshots{distro_suffix}", f"@boot{distro_suffix}", f"@etc{distro_suffix}", f"@home{distro_suffix}", f"@var{distro_suffix}"]
     mntdirs = ["", ".snapshots", "boot", "etc", "home", "var"]
-#if is_ash_bundle and not is_efi: # disadvantage: only for BTRFS
-#    mntdirs += " bundle"
-#    btrdirs.append(f"@bundle{distro_suffix}")
+if is_strap_cache:
+    strap_cache_dir = get_path("Enter offline cache directory to bootstrap packages from:")
 is_luks = yes_no("Would you like to use LUKS?")
 if is_luks:
     os_root = "/dev/mapper/luks_root"

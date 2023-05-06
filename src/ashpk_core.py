@@ -1053,7 +1053,7 @@ def switch_tmp(secondary=False):
     distro_suffix = get_distro_suffix()
     part = get_part()
     tmp_boot = sp.check_output("mktemp -d -p /.snapshots/tmp boot.XXXXXXXXXXXXXXXX", shell=True).decode('utf-8').strip()
-###TODO    with TemporaryDirectory(dir="/.snapshots/tmp", prefix="boot.") as tmp_boot:
+#    with TemporaryDirectory(dir="/.snapshots/tmp", prefix="boot.") as tmp_boot: # TODO
     os.system(f"mount {part} -o subvol=@boot{distro_suffix} {tmp_boot}") # Mount boot partition for writing
   # Swap deployment subvolumes: deploy <-> deploy-aux
     source_dep = get_tmp()
@@ -1080,7 +1080,7 @@ def switch_tmp(secondary=False):
                 line = grubconf.readline()
             if "snapshot-deploy-aux" in gconf:
                 gconf = gconf.replace("snapshot-deploy-aux", "snapshot-deploy")
-            elif "snapshot-deploy" in gconf: ### REVIEW 2023 add others as well (secondary etc) ### Before: else
+            elif "snapshot-deploy" in gconf: # REVIEW add others as well (secondary etc) # before: else
                 gconf = gconf.replace("snapshot-deploy", "snapshot-deploy-aux")
             if distro_name in gconf:
                 gconf = sub('snapshot \\d', '', gconf) # REVIEW important

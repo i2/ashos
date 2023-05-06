@@ -565,7 +565,8 @@ EDITOR=nano ash edit-conf <snapshot> # set the EDITOR variable
 * Now we can enable AUR by editing the file like so:
 
 ```
-aur::True
+[aur]
+Enable
 ```
 
 * Save changes and quit

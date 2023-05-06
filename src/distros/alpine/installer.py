@@ -17,8 +17,8 @@ ARCH = "x86_64"
 RELEASE = "edge"
 KERNEL = "edge" # options: lts
 packages = f"linux-{KERNEL} curl coreutils sudo tzdata mount mkinitfs umount \
-            tmux bash" # \
-            #linux-firmware-none networkmanager linux-firmware nano doas os-prober musl-locales musl-locales-lang dbus"
+            tmux bash linux-firmware-none" # \
+            # networkmanager linux-firmware nano doas os-prober musl-locales musl-locales-lang dbus"
             # default mount from busybox gives errors. # umount still required?!
 if not is_ash_bundle:
     packages +=  " python3 py3-anytree"
